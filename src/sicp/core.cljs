@@ -12,6 +12,9 @@
   (doseq [i l]
     (p i)))
 
+(defn log [msg]
+  (.log js/console msg))
+
 ;;set size of canvas
 (def CANVAS_WIDTH (.-innerWidth js/window))
 (def CANVAS_HEIGHT (- (.-innerHeight js/window) 100))
@@ -76,10 +79,9 @@
 ;;draw a line on the canvas
 ;;offset by .5 to keep lines sharp
 (defn draw-line! [start end]
-    (println start end)
   (.beginPath CTX)
   (.moveTo CTX (+ 0.5 (xcor-vect start)) (+ 0.5 (ycor-vect start)))
-  (.lineTo CTX (+ 0.5(xcor-vect end)) (+ 0.5 (ycor-vect end)))
+  (.lineTo CTX (+ 0.5 (xcor-vect end)) (+ 0.5 (ycor-vect end)))
   (.stroke CTX))
 
 ;;Painter
@@ -94,11 +96,11 @@
     ))
 
 ;; clear the canvas
-(defn clear-canvas []
+(defn clear-canvas! []
   (.clearRect CTX 0 0 CANVAS_WIDTH CANVAS_HEIGHT))
 
 ;;FRAME has origin at top left
-(def FRAME (make-frame [0 0] [500 0] [0 500]))
+(def FRAME(make-frame [0 0] [500 0] [0 500]))
 
 
 ;;test
@@ -171,6 +173,12 @@
                      (make-vect 1 1)
                      (make-vect 0 0)))
 
+(defn flip-horiz [painter]
+  (transform-painter painter
+                     (make-vect 1 0)
+                     (make-vect 0 0)
+                     (make-vect 1 1)))
+
 (defn shrink-to-upper-right [painter]
   (transform-painter painter
                      (make-vect 0.5 0.5)
@@ -179,12 +187,98 @@
 
 (defn rotate90 [painter]
   (transform-painter painter
-                     (make-vect 1 0)
                      (make-vect 1 1)
-                     (make-vect 0 0)))
+                     (make-vect 1 0)
+                     (make-vect 0 1)))
+
+(defn rotate180 [painter]
+  (transform-painter painter
+                     (make-vect 1 0)
+                     (make-vect 0 0)
+                     (make-vect 1 1)))
+
+(defn rotate270 [painter]
+  (transform-painter painter
+                     (make-vect 0 0)
+                     (make-vect 0 1)
+                     (make-vect 1 0)))
+
 
 (defn squash-inwards [painter]
   (transform-painter painter
                      (make-vect 0 0)
                      (make-vect 0.65 0.35)
                      (make-vect 0.35 0.65)))
+
+(defn beside [painter1 painter2]
+  (let [split-point (make-vect 0.5 0)
+        paint-left (transform-painter painter1
+                                      (make-vect 0 0)
+                                      split-point
+                                      (make-vect 0 1))
+        paint-right (transform-painter painter2
+                                       split-point
+                                       (make-vect 1 0)
+                                       (make-vect 0.5 1))]
+    (fn [frame]
+      (paint-left frame)
+      (paint-right frame))))
+
+
+(defn below [painter1 painter2]
+  (let [split-point (make-vect 0 0.5)
+        paint-bottom (transform-painter painter1
+                                     (make-vect 0 0)
+                                     (make-vect 1 0)
+                                     split-point)
+        paint-top (transform-painter painter2
+                                     split-point
+                                     (make-vect 1 0.5)
+                                     (make-vect 0 1))]
+    (fn [frame]
+      (paint-bottom frame)
+      (paint-top frame))))
+
+
+(defn wave2 [frame]
+  ((beside wave (flip-vert wave))
+     frame))
+
+;(defn wave4 [frame]
+  ;((below wave2 wave2)
+   ;frame))
+
+(defn flipped-pairs [painter]
+  (let [painter2 (beside painter (flip-vert painter))]
+    (below painter2 painter2)))
+
+(defn wave4 [frame] 
+  ((flipped-pairs wave) frame))
+
+(defn right-split [painter n]
+  (if (= n 0)
+    painter
+    (let [smaller (right-split painter (- n 1))]
+      (beside painter (below smaller smaller)))))
+
+(defn up-split [painter n]
+  (if (= n 0)
+    painter
+    (let [smaller (up-split painter (- n 1))]
+      (below (beside smaller smaller) painter ))))
+
+(defn corner-split [painter n]
+  (if (= n 0)
+    painter
+    (let [up (up-split painter (- n 1))
+          right (right-split painter (- n 1))
+          top-left (beside up up)
+          bottom-right (below right right)
+          corner (corner-split painter (- n 1))]
+      (beside (below top-left painter )
+              (below corner bottom-right )))))
+
+(defn square-limit [painter n]
+ (let [quarter (corner-split painter n)
+       half (beside (flip-horiz quarter) quarter)]
+   (below half (flip-vert half))))
