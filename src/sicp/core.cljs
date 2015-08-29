@@ -97,7 +97,10 @@
 (defn clear-canvas []
   (.clearRect CTX 0 0 CANVAS_WIDTH CANVAS_HEIGHT))
 
+;;FRAME has origin at top left
 (def FRAME (make-frame [0 0] [500 0] [0 500]))
+
+
 ;;test
 ;;(draw-line! (make-vect 0 0) (make-vect 500 500))
 
@@ -154,3 +157,34 @@
                          (make-segment (N [4 20]) (N [6 12]))
                          (make-segment (N [6 12]) (N [6 10]))
                          ]) frame)))
+
+(defn transform-painter [painter origin corner1 corner2]
+  (fn [frame]
+      (let [m (frame-coord-map frame)
+            new-origin (m origin)]
+        (painter (make-frame new-origin
+                             (sub-vect (m corner1) new-origin)
+                             (sub-vect (m corner2) new-origin))))))
+(defn flip-vert [painter]
+  (transform-painter painter
+                     (make-vect 0 1)
+                     (make-vect 1 1)
+                     (make-vect 0 0)))
+
+(defn shrink-to-upper-right [painter]
+  (transform-painter painter
+                     (make-vect 0.5 0.5)
+                     (make-vect 1.0 0.5)
+                     (make-vect 0.5 1.0)))
+
+(defn rotate90 [painter]
+  (transform-painter painter
+                     (make-vect 1 0)
+                     (make-vect 1 1)
+                     (make-vect 0 0)))
+
+(defn squash-inwards [painter]
+  (transform-painter painter
+                     (make-vect 0 0)
+                     (make-vect 0.65 0.35)
+                     (make-vect 0.35 0.65)))
