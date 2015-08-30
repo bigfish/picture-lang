@@ -95,6 +95,9 @@
         segment-list)
     ))
 
+(defn ident [painter]
+  painter)
+
 ;; clear the canvas
 (defn clear-canvas! []
   (.clearRect CTX 0 0 CANVAS_WIDTH CANVAS_HEIGHT))
@@ -187,21 +190,21 @@
 
 (defn rotate90 [painter]
   (transform-painter painter
-                     (make-vect 1 1)
-                     (make-vect 1 0)
-                     (make-vect 0 1)))
-
-(defn rotate180 [painter]
-  (transform-painter painter
-                     (make-vect 1 0)
+                     (make-vect 0 1)
                      (make-vect 0 0)
                      (make-vect 1 1)))
 
-(defn rotate270 [painter]
+(defn rotate180 [painter]
   (transform-painter painter
-                     (make-vect 0 0)
+                     (make-vect 1 1)
                      (make-vect 0 1)
                      (make-vect 1 0)))
+
+(defn rotate270 [painter]
+  (transform-painter painter
+                     (make-vect 1 0)
+                     (make-vect 1 1)
+                     (make-vect 0 0)))
 
 
 (defn squash-inwards [painter]
@@ -282,3 +285,20 @@
  (let [quarter (corner-split painter n)
        half (beside (flip-horiz quarter) quarter)]
    (below half (flip-vert half))))
+
+(defn square-of-four [tl tr bl br]
+  (fn [painter]
+    (let [top (beside (tl painter) (tr painter))
+          bottom (beside (bl painter) (br painter))]
+      (below top bottom))))
+
+(defn flipped-pairs2 [painter]
+  (let [combine4 (square-of-four ident flip-vert
+                                 ident flip-vert)]
+    (combine4 painter)))
+
+(defn square-limit2 [painter n]
+  (let [combine4 (square-of-four flip-horiz ident
+                                 rotate180 flip-vert)]
+    (combine4 (corner-split painter n))))
+
