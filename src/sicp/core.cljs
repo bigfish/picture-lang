@@ -302,3 +302,23 @@
                                  rotate180 flip-vert)]
     (combine4 (corner-split painter n))))
 
+;;paint 2 painters, without transforming the frame they paint
+(defn double-painter [p1 p2]
+  (fn [frame]
+      (p1 frame)
+      (p2 frame)
+))
+
+(defn subdivide-horiz [painter n]
+  (defn subdivide-horiz-iter [painter n width xcor]
+    (let [paint-tile (transform-painter painter
+                           (make-vect xcor 0)
+                           (make-vect (+ xcor width) 0)
+                           (make-vect xcor 1))]
+      (if (= 0 n)
+        paint-tile
+        (double-painter paint-tile
+                (subdivide-horiz-iter painter (- n 1) width (+ width xcor)))
+        )
+    ))
+  (subdivide-horiz-iter painter n (/ 1 n) 0))
