@@ -309,26 +309,31 @@
       (p2 frame)
 ))
 
+;;make a frame from a tile
+(defn make-tile [xcor ycor width height]
+  (make-frame (make-vect xcor ycor)
+              (make-vect (+ width xcor) ycor)
+              (make-vect xcor (+ height ycor))))
+
+(defn tile-painter [painter tile]
+ (transform-painter painter
+                    (origin-frame tile)
+                    (edge1-frame tile)
+                    (edge2-frame tile)))
+
 (defn subdivide-horiz [painter n]
   (defn subdivide-horiz-iter [painter n width xcor]
-    (let [paint-tile (transform-painter painter
-                           (make-vect xcor 0)
-                           (make-vect (+ width xcor) 0)
-                           (make-vect xcor 1))]
+    (let [paint-tile (tile-painter painter (make-tile xcor 0 width 1))]
       (if (= 0 n)
-        paint-tile
+        paint-tile  
         (double-painter paint-tile
-                (subdivide-horiz-iter painter (- n 1) width (+ width xcor)))
-        )
-    ))
+                        (subdivide-horiz-iter painter (- n 1) width (+ width xcor)))
+    )))
   (subdivide-horiz-iter painter (- n 1) (/ 1 n) 0))
 
 (defn subdivide-vert [painter n]
   (defn subdivide-vert-iter [painter n height ycor]
-    (let [paint-tile (transform-painter painter
-                                        (make-vect 0 ycor)
-                                        (make-vect 1 ycor)
-                                        (make-vect 0 (+ height ycor)))]
+    (let [paint-tile (tile-painter painter (make-tile 0 ycor 1 height))]
       (if (= 0 n)
         paint-tile
         (double-painter paint-tile
