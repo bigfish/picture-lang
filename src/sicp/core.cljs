@@ -313,7 +313,7 @@
   (defn subdivide-horiz-iter [painter n width xcor]
     (let [paint-tile (transform-painter painter
                            (make-vect xcor 0)
-                           (make-vect (+ xcor width) 0)
+                           (make-vect (+ width xcor) 0)
                            (make-vect xcor 1))]
       (if (= 0 n)
         paint-tile
@@ -321,4 +321,20 @@
                 (subdivide-horiz-iter painter (- n 1) width (+ width xcor)))
         )
     ))
-  (subdivide-horiz-iter painter n (/ 1 n) 0))
+  (subdivide-horiz-iter painter (- n 1) (/ 1 n) 0))
+
+(defn subdivide-vert [painter n]
+  (defn subdivide-vert-iter [painter n height ycor]
+    (let [paint-tile (transform-painter painter
+                                        (make-vect 0 ycor)
+                                        (make-vect 1 ycor)
+                                        (make-vect 0 (+ height ycor)))]
+      (if (= 0 n)
+        paint-tile
+        (double-painter paint-tile
+                        (subdivide-vert-iter painter (- n 1) height (+ height ycor)))
+        )))
+  (subdivide-vert-iter painter (- n 1) (/ 1 n) 0))
+
+(defn tile [painter rows cols]
+  (subdivide-vert (subdivide-horiz painter cols) rows))
