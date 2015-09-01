@@ -306,8 +306,9 @@
 (defn double-painter [p1 p2]
   (fn [frame]
       (p1 frame)
-      (p2 frame)
-))
+      (p2 frame)))
+
+(defn empty-painter [frame])
 
 ;;make a frame from a tile
 (defn make-tile [xcor ycor width height]
@@ -315,31 +316,66 @@
               (make-vect (+ width xcor) ycor)
               (make-vect xcor (+ height ycor))))
 
+(defn tile-width [tile]
+  (- (xcor-vect (edge1-frame tile))
+     (xcor-vect (origin-frame tile))))
+
+(defn tile-height [tile]
+  (- (ycor-vect (edge2-frame tile))
+     (ycor-vect (origin-frame tile))))
+
 (defn tile-painter [painter tile]
  (transform-painter painter
                     (origin-frame tile)
                     (edge1-frame tile)
                     (edge2-frame tile)))
 
-(defn subdivide-horiz [painter n]
-  (defn subdivide-horiz-iter [painter n width xcor]
-    (let [paint-tile (tile-painter painter (make-tile xcor 0 width 1))]
-      (if (= 0 n)
-        paint-tile  
-        (double-painter paint-tile
-                        (subdivide-horiz-iter painter (- n 1) width (+ width xcor)))
-    )))
-  (subdivide-horiz-iter painter (- n 1) (/ 1 n) 0))
+(defn shift-tile [tile shift]
+  (let [shift-vect (make-vect (* (tile-width tile) (xcor-vect shift))
+                              (* (tile-height tile) (ycor-vect shift)))]
+    (make-frame (add-vect (origin-frame tile) shift-vect)
+               (add-vect (edge1-frame tile) shift-vect)
+               (add-vect (edge2-frame tile) shift-vect))))
 
-(defn subdivide-vert [painter n]
-  (defn subdivide-vert-iter [painter n height ycor]
-    (let [paint-tile (tile-painter painter (make-tile 0 ycor 1 height))]
-      (if (= 0 n)
+;;painter transformers
+(defn ident-painter [painter tile n]
+  (tile-painter painter tile))
+
+(defn odd-tile-painter [painter tile n]
+  (if (odd? n)
+    (tile-painter painter tile)
+    empty-painter))
+
+;;use tile size to shift over
+;;dir is a vector indicating direction to shift
+(defn tile-sequence-painter [painter n tile dir transform-painter]
+    (let [paint-tile (transform-painter painter tile n)
+          next-tile (shift-tile tile dir)]
+      (if (= 0 n) 
         paint-tile
         (double-painter paint-tile
-                        (subdivide-vert-iter painter (- n 1) height (+ height ycor)))
+                        (tile-sequence-painter painter (- n 1) next-tile dir transform-painter))
         )))
-  (subdivide-vert-iter painter (- n 1) (/ 1 n) 0))
 
-(defn tile [painter rows cols]
-  (subdivide-vert (subdivide-horiz painter cols) rows))
+(defn tile-horiz [painter n]
+  (let [dir (make-vect 1 0)
+        tile (make-tile 0 0 (/ 1 n) 1)]
+    (tile-sequence-painter painter n tile dir ident-painter)))
+
+(defn tile-vert [painter n]
+  (let [dir (make-vect 0 1)
+        tile (make-tile 0 0 1 (/ 1 n))]
+    (tile-sequence-painter painter n tile dir ident-painter)))
+
+(defn tile-horiz-odd [painter n]
+  (let [dir (make-vect 1 0)
+        tile (make-tile 0 0 (/ 1 n) 1)]
+    (tile-sequence-painter painter n tile dir odd-tile-painter)))
+
+(defn tile-vert-odd [painter n]
+  (let [dir (make-vect 0 1)
+        tile (make-tile 0 0 1 (/ 1 n))]
+    (tile-sequence-painter painter n tile dir odd-tile-painter)))
+
+(defn tile-plane [painter rows cols]
+    (tile-vert (tile-horiz painter cols) rows))
